@@ -1,0 +1,182 @@
+﻿<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<div id="info">HW1
+  <br>press "Home" to star, "Space" to brake
+  <br>press "Up" to accelerate, "Down" to decelerate
+  <br>press "Right" to trun right and "Left" to turn left</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r70/three.min.js"></script>
+<script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js">
+
+
+</script>
+<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+
+<style>
+
+#info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  color: #ffff00
+}
+
+body {
+  overflow: hidden;
+}
+
+</style>
+</head>
+
+<body> 
+<script>
+
+var camera, scene, renderer, controls, light;
+var car;
+
+//control the car
+var pos, vel, force, star = false;
+var mass = 1900,power = 0;
+var angle = 0;
+var clock = new THREE.Clock();
+
+//direction
+var turn = 0;
+var keyboard = new KeyboardState();
+
+init();
+animate();
+
+function init() {
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+  camera.position.z = 500;
+  scene.add(camera);
+
+  // The car
+  var geometry = new THREE.Geometry();
+  geometry.vertices.push(
+    new THREE.Vector3(0, 0, 8),
+    new THREE.Vector3(20, 0, 0),
+    new THREE.Vector3(0, 10, 0),
+    new THREE.Vector3(0, 0, -8)
+  );
+  geometry.faces.push(
+    new THREE.Face3(0, 1, 2),
+    new THREE.Face3(1, 3, 2),
+    new THREE.Face3(0, 2, 3),
+    new THREE.Face3(0, 3, 1)
+  );
+  geometry.computeBoundingSphere();
+  geometry.computeFaceNormals();
+  geometry.computeVertexNormals();
+
+  var material = new THREE.MeshLambertMaterial({color:0xffff00});
+  car = new THREE.Mesh(geometry, material);
+  scene.add(car);
+
+  //Physical change
+
+  pos = new THREE.Vector3();
+  vel = new THREE.Vector3();
+  force = new THREE.Vector3();
+
+  ///////////////////////////////////////////////////////
+  var grid = new THREE.GridHelper(500, 10);
+  grid.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
+  scene.add(grid);
+
+  renderer = new THREE.WebGLRenderer()
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  
+  light = new THREE.PointLight(0xffffff);
+  light.position.set(100, 500, 0);
+  scene.add(light);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  document.body.appendChild(renderer.domElement);
+}
+
+function computeForce() {
+  // engine force
+
+  force = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle + turn).multiplyScalar(power);
+
+
+  // resistance force
+  var Mu = 0.8;
+  force.add(vel.clone().multiplyScalar(-Mu).multiplyScalar(mass));
+}
+
+function direction() {
+  if (keyboard.down("home")) {
+    star = true;
+  }
+  if (star === true) {
+    if (keyboard.pressed("up") && power <= 600000) {
+      power += 2000;
+    }
+    if (keyboard.pressed("down")) {
+      power -= 10000;
+    }
+    if (keyboard.down("right")) {
+      turn -= 1;
+    }
+    if (keyboard.down("left")) {
+      turn += 1;
+    }
+    if (keyboard.up("right") || keyboard.up("left")) {
+      turn = 0;
+    }
+    if (keyboard.down("space")) {
+      power = 0;
+  	}
+    if(power <= 0) power = 0;
+  }
+  computeForce();
+}
+
+function animate() {
+  controls.update();
+  keyboard.update();
+
+  direction();
+
+  var dt = clock.getDelta();
+  //vel = vel + force / m * dt;
+  vel.add(force.clone().multiplyScalar(dt / mass));
+  //pos = pos + vel * dt
+  pos.add(vel.clone().multiplyScalar(dt));
+  car.position.copy(pos);
+
+  car.rotation.y = angle;
+
+  if (vel.length() > 1e-3) {
+    angle = Math.atan2(-vel.z, vel.x);
+  }
+
+  requestAnimationFrame(animate);
+  render();
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+// important to add this 
+// in jsfiddle!
+window.focus();
+
+
+</script>
+</body>
+
+</html>
